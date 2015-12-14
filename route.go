@@ -125,9 +125,12 @@ func (r Route) matchesContentType(mimeTypes string) bool {
 	return false
 }
 
+//这个函数的处理逻辑是这样的：首先在registry时，会将方法与url绑定，这个url 一般会是这样的 /root/cluster/{cluster-id}
+//这段url会保存在r.pathParts中，而这个方法中的路径urlPath，则是请求的路径。首先讲urlPath分解成一个数组urlParts，这个
+//数组与r.pathParts一一对应，然后依次扫描r.pathParts，当发现{}这个时，证明匹配到了参数字段
 // Extract the parameters from the request url path
 func (r Route) extractParameters(urlPath string) map[string]string {
-	urlParts := tokenizePath(urlPath)
+	urlParts := tokenizePath(urlPath) //分割路径
 	pathParameters := map[string]string{}
 	for i, key := range r.pathParts {
 		var value string
@@ -137,10 +140,10 @@ func (r Route) extractParameters(urlPath string) map[string]string {
 			value = urlParts[i]
 		}
 		if strings.HasPrefix(key, "{") { // path-parameter
-			if colon := strings.Index(key, ":"); colon != -1 {
+			if colon := strings.Index(key, ":"); colon != -1 { //处理带： ，有正则表达式的情况
 				// extract by regex
-				regPart := key[colon+1 : len(key)-1]
-				keyPart := key[1:colon]
+				regPart := key[colon+1 : len(key)-1] //注意：slice用的是下标，所以最后一个元素的下标是len(key)-1
+				keyPart := key[1:colon]              //key 是这种格式的{ }
 				if regPart == "*" {
 					pathParameters[keyPart] = untokenizePath(i, urlParts)
 					break
@@ -148,7 +151,7 @@ func (r Route) extractParameters(urlPath string) map[string]string {
 					pathParameters[keyPart] = value
 				}
 			} else {
-				// without enclosing {}
+				// without enclosing {} 去掉{}
 				pathParameters[key[1:len(key)-1]] = value
 			}
 		}
@@ -158,7 +161,7 @@ func (r Route) extractParameters(urlPath string) map[string]string {
 
 // Untokenize back into an URL path using the slash separator
 func untokenizePath(offset int, parts []string) string {
-	var buffer bytes.Buffer
+	var buffer bytes.Buffer //拼凑字符串的方式  byte.Buffer.WriterString
 	for p := offset; p < len(parts); p++ {
 		buffer.WriteString(parts[p])
 		// do not end
@@ -169,6 +172,7 @@ func untokenizePath(offset int, parts []string) string {
 	return buffer.String()
 }
 
+//token 符号，令牌 将url按照/分割成多个字段
 // Tokenize an URL path using the slash separator ; the result does not have empty tokens
 func tokenizePath(path string) []string {
 	if "/" == path {

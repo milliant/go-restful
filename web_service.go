@@ -16,7 +16,7 @@ import (
 type WebService struct {
 	rootPath       string
 	pathExpr       *pathExpression // cached compilation of rootPath as RegExp
-	routes         []Route
+	routes         []Route         //绑定http方法+URL路径 ---> 方法  (mapping)
 	produces       []string
 	consumes       []string
 	pathParameters []*Parameter
@@ -26,6 +26,7 @@ type WebService struct {
 
 	dynamicRoutes bool
 
+	//这是一个读写互斥锁，允许多个读者 或者一个写者来操作
 	// protects 'routes' if dynamic routes are enabled
 	routesLock sync.RWMutex
 }
@@ -36,6 +37,8 @@ func (w *WebService) SetDynamicRoutes(enable bool) {
 
 // compilePathExpression ensures that the path is compiled into a RegEx for those routers that need it.
 func (w *WebService) compilePathExpression() {
+	//这里通过判断rootPath的长度，来确定rootPath是否有值
+	// -->rootPath是string类型，new 了一个struct后，会给rootPath赋零值
 	if len(w.rootPath) == 0 {
 		w.Path("/") // lazy initialize path
 	}
@@ -72,6 +75,8 @@ func (w *WebService) Param(parameter *Parameter) *WebService {
 	w.pathParameters = append(w.pathParameters, parameter)
 	return w
 }
+
+//以下有多个方法 *Parameter ，这些方法都是文档化参数用的，并没有什么实际作用
 
 // PathParameter creates a new Parameter of kind Path for documentation purposes.
 // It is initialized as required with string as its DataType.
@@ -159,14 +164,16 @@ func (w *WebService) RemoveRoute(path, method string) error {
 	}
 	w.routesLock.Lock()
 	defer w.routesLock.Unlock()
-	for ix := range w.routes {
+	for ix := range w.routes { //w.routes是slice类型，index, value:=range slice;如果省略index 则需要用_替代，省略第二个则不用表示
 		if w.routes[ix].Method == method && w.routes[ix].Path == path {
+			//删掉slice中一个元素： 将slice的后半部分 append到slice中d前半部分中
 			w.routes = append(w.routes[:ix], w.routes[ix+1:]...)
 		}
 	}
 	return nil
 }
 
+//创建一个RouteBuilder，然后调用RouteBuilder的Method()
 // Method creates a new RouteBuilder and initialize its http method
 func (w *WebService) Method(httpMethod string) *RouteBuilder {
 	return new(RouteBuilder).servicePath(w.rootPath).Method(httpMethod)
