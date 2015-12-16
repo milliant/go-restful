@@ -28,13 +28,13 @@ func NewRequest(httpRequest *http.Request) *Request {
 	return &Request{
 		Request:        httpRequest,
 		pathParameters: map[string]string{},
-		attributes:     map[string]interface{}{},
+		attributes:     map[string]interface{}{}, //注意这里的写法interface{}是一个type
 	} // empty parameters, attributes
 }
 
 // If ContentType is missing or */* is given then fall back to this type, otherwise
 // a "Unable to unmarshal content of type:" response is returned.
-// Valid values are restful.MIME_JSON and restful.MIME_XML
+// Valid values are restful.MIME_JSON and restful.MIME_XML ---？
 // Example:
 // 	restful.DefaultRequestContentType(restful.MIME_JSON)
 func DefaultRequestContentType(mime string) {
@@ -82,9 +82,9 @@ func (r *Request) ReadEntity(entityPointer interface{}) (err error) {
 	contentEncoding := r.Request.Header.Get(HEADER_ContentEncoding)
 
 	// OLD feature, cache the body for reads
-	if doCacheReadEntityBytes {
-		if r.bodyContent == nil {
-			data, err := ioutil.ReadAll(r.Request.Body)
+	if doCacheReadEntityBytes { //这个是 是否缓存的标志
+		if r.bodyContent == nil { //bodyContent是缓存的地方
+			data, err := ioutil.ReadAll(r.Request.Body) //从r.Request.Body中读取entity!!!读取Body中的所有数据
 			if err != nil {
 				return err
 			}
