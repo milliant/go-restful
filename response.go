@@ -67,11 +67,11 @@ func (r *Response) SetRequestAccepts(mime string) {
 // EntityWriter returns the registered EntityWriter that the entity (requested resource)
 // can write according to what the request wants (Accept) and what the Route can produce or what the restful defaults say.
 // If called before WriteEntity and WriteHeader then a false return value can be used to write a 406: Not Acceptable.
-func (r *Response) EntityWriter() (EntityReaderWriter, bool) {
-	for _, qualifiedMime := range strings.Split(r.requestAccept, ",") {
-		mime := strings.Trim(strings.Split(qualifiedMime, ";")[0], " ")
-		if 0 == len(mime) || mime == "*/*" {
-			for _, each := range r.routeProduces {
+func (r *Response) EntityWriter() (EntityReaderWriter, bool) { //我认为可以设置成私有方法，这样EntityWriter()就不能在package外的地方调用
+	for _, qualifiedMime := range strings.Split(r.requestAccept, ",") { //确定请求中可以接受哪些类型的返回
+		mime := strings.Trim(strings.Split(qualifiedMime, ";")[0], " ") //获取slice第一个参数slice[0],并且去掉两端的空格
+		if 0 == len(mime) || mime == "*/*" {                            //如果request中没有，可接收类型的要求
+			for _, each := range r.routeProduces { //轮询response中可以产生哪些类型的返回数据
 				if MIME_JSON == each {
 					return entityAccessRegistry.AccessorAt(MIME_JSON)
 				}
@@ -81,17 +81,18 @@ func (r *Response) EntityWriter() (EntityReaderWriter, bool) {
 			}
 		} else { // mime is not blank; see if we have a match in Produces
 			for _, each := range r.routeProduces {
-				if mime == each {
-					if MIME_JSON == each {
+				if mime == each { //如果request当中的可接收类型，与response中可以产生的类型相匹配
+					if MIME_JSON == each { //确定这个可匹配的类型是哪种？MIME_JSON  = "application/json"
 						return entityAccessRegistry.AccessorAt(MIME_JSON)
 					}
-					if MIME_XML == each {
+					if MIME_XML == each { //MIME_XML   = "application/xml"
 						return entityAccessRegistry.AccessorAt(MIME_XML)
 					}
 				}
 			}
 		}
 	}
+	//entityAccessRegistry是一个单例变量
 	writer, ok := entityAccessRegistry.AccessorAt(r.requestAccept)
 	if !ok {
 		// if not registered then fallback to the defaults (if set)

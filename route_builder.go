@@ -16,11 +16,11 @@ import (
 // RouteBuilder is a helper to construct Routes.
 type RouteBuilder struct {
 	rootPath    string
-	currentPath string
+	currentPath string //full path = rootPath + currentPath
 	produces    []string
 	consumes    []string
-	httpMethod  string        // required
-	function    RouteFunction // required
+	httpMethod  string        // required  GET/PUT/DELETE/POST
+	function    RouteFunction // required fullpath + httpmethod --->处理方法
 	filters     []FilterFunction
 	// documentation
 	doc                     string
@@ -39,7 +39,8 @@ type RouteBuilder struct {
 //		func Returns500(b *RouteBuilder) {
 //			b.Returns(500, "Internal Server Error", restful.ServiceError{})
 //		}
-func (b *RouteBuilder) Do(oneArgBlocks ...func(*RouteBuilder)) *RouteBuilder {
+//Do这个方法接受多个方法作为参数，该函数的功能是将该方法的调用者（t.Do），依次传递给该方法的参数（函数）进行处理
+func (b *RouteBuilder) Do(oneArgBlocks ...func(*RouteBuilder)) *RouteBuilder { //参数个数可变 类型是func(*RouteBuilder)类型
 	for _, each := range oneArgBlocks {
 		each(b)
 	}
@@ -54,46 +55,47 @@ func (b *RouteBuilder) To(function RouteFunction) *RouteBuilder {
 }
 
 // Method specifies what HTTP method to match. Required.
-func (b *RouteBuilder) Method(method string) *RouteBuilder {
+func (b *RouteBuilder) Method(method string) *RouteBuilder { //method 最好是个枚举类型，因为method的取值范围是很有限的
 	b.httpMethod = method
 	return b
 }
 
 // Produces specifies what MIME types can be produced ; the matched one will appear in the Content-Type Http header.
-func (b *RouteBuilder) Produces(mimeTypes ...string) *RouteBuilder {
+func (b *RouteBuilder) Produces(mimeTypes ...string) *RouteBuilder { //设置http 头部的content-type字段
 	b.produces = mimeTypes
 	return b
 }
 
 // Consumes specifies what MIME types can be consumes ; the Accept Http header must matched any of these
-func (b *RouteBuilder) Consumes(mimeTypes ...string) *RouteBuilder {
+func (b *RouteBuilder) Consumes(mimeTypes ...string) *RouteBuilder { //设置http头部可以接收的类型
 	b.consumes = mimeTypes
 	return b
 }
 
 // Path specifies the relative (w.r.t WebService root path) URL path to match. Default is "/".
-func (b *RouteBuilder) Path(subPath string) *RouteBuilder {
+func (b *RouteBuilder) Path(subPath string) *RouteBuilder { // 设置URL中的相对路径
 	b.currentPath = subPath
 	return b
 }
 
 // Doc tells what this route is all about. Optional.
-func (b *RouteBuilder) Doc(documentation string) *RouteBuilder {
+func (b *RouteBuilder) Doc(documentation string) *RouteBuilder { // 设置文档说明 -->字符串  可选的
 	b.doc = documentation
 	return b
 }
 
 // A verbose explanation of the operation behavior. Optional.
-func (b *RouteBuilder) Notes(notes string) *RouteBuilder {
+func (b *RouteBuilder) Notes(notes string) *RouteBuilder { //设置操作说明  文档说明
 	b.notes = notes
 	return b
 }
 
+//这个函数的作用也是出于记录文档的作用
 // Reads tells what resource type will be read from the request payload. Optional.
 // A parameter of type "body" is added ,required is set to true and the dataType is set to the qualified name of the sample's type.
 func (b *RouteBuilder) Reads(sample interface{}) *RouteBuilder {
 	b.readSample = sample
-	typeAsName := reflect.TypeOf(sample).String()
+	typeAsName := reflect.TypeOf(sample).String() //获取sample的类型
 	bodyParameter := &Parameter{&ParameterData{Name: "body"}}
 	bodyParameter.beBody()
 	bodyParameter.Required(true)
@@ -223,6 +225,7 @@ func (b *RouteBuilder) Build() Route {
 }
 
 func concatPath(path1, path2 string) string {
+	//注意这里的处理方法，路径相拼接是需要/相连的，因此首先去掉/，然后在主动添加一个
 	return strings.TrimRight(path1, "/") + "/" + strings.TrimLeft(path2, "/")
 }
 

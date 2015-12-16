@@ -23,12 +23,18 @@ type EntityReaderWriter interface {
 	Write(resp *Response, status int, v interface{}) error
 }
 
-// entityAccessRegistry is a singleton
+// entityAccessRegistry is a singleton   entityAccessRegistry是一个单例
+//entityReaderWriters这个struct是包私有的 在package外不能创建变量
+//entityAccessRegistry 是一个已经初始化好的包私有全局变量 在package外任然不能使用entityAccessRegistry
+//在这里singleton的意思是，在这个package内可以直接使用这一个已经初始化好的全局变量，而不用重新创建一个变量
 var entityAccessRegistry = &entityReaderWriters{
 	protection: new(sync.RWMutex),
 	accessors:  map[string]EntityReaderWriter{},
 }
 
+//MIME意为多目Internet邮件扩展，它设计的最初目的是为了在发送电子邮件时附加多媒体数据，让邮件客户程序能根据其类型进行处理。
+//它被HTTP协议支持之后，它使得HTTP传输的不仅是普通的文本，而变得丰富多彩。
+//在把输出结果传送到浏览器上的时候，浏览器必须启动适当的应用程序来处理这个输出文档
 // entityReaderWriters associates MIME to an EntityReaderWriter
 type entityReaderWriters struct {
 	protection *sync.RWMutex
@@ -51,12 +57,13 @@ func RegisterEntityAccessor(mime string, erw EntityReaderWriter) {
 func (r *entityReaderWriters) AccessorAt(mime string) (EntityReaderWriter, bool) {
 	r.protection.RLock()
 	defer r.protection.RUnlock()
-	er, ok := r.accessors[mime]
+	//accessors是一个map:  map[string]EntityReaderWriter ，key是各种MIME类型
+	er, ok := r.accessors[mime] //comma，ok模式应用在map判定是否存在对应key的item
 	if !ok {
 		// retry with reverse lookup
 		// more expensive but we are in an exceptional situation anyway
-		for k, v := range r.accessors {
-			if strings.Contains(mime, k) {
+		for k, v := range r.accessors { // key,value := range map  ;  value,ispresentd:=range map[key]
+			if strings.Contains(mime, k) { //判断mime中是否包含k
 				return v, true
 			}
 		}
